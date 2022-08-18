@@ -1,9 +1,10 @@
 # For more information: https://laravel.com/docs/sail
 version: '3.9'
 services:
-  laravel.test:
+  global.club.api:
+    container_name: global-club-api-v2
     build:
-      context: ./vendor/laravel/sail/runtimes/8.1
+      context: ./docker/8.1
       dockerfile: Dockerfile
       args:
         WWWGROUP: '${WWWGROUP}'
@@ -11,8 +12,8 @@ services:
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     ports:
-      - '${APP_PORT:-80}:80'
-      - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+      - '3337:80'
+      - '${VITE_PORT:-5175}:${VITE_PORT:-5173}'
     environment:
       WWWUSER: '${WWWUSER}'
       LARAVEL_SAIL: 1
@@ -22,13 +23,6 @@ services:
       - '.:/var/www/html'
     networks:
       - api
-    depends_on:
-      - mysql
-      - redis
-      - meilisearch
-      - mailhog
-      - selenium
-
 networks:
   api:
     name: globalNetwork
