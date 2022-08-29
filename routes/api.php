@@ -20,3 +20,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth.customToken')
   ->get('/hello', [\App\Http\Controllers\Api\WPMovementController::class, "hello"]);
+
+
+Route::middleware('auth.cronUser')
+  ->prefix("wp")
+  ->group(function () {
+    Route::get('/trigger-end-semester-switch', [\App\Http\Controllers\Api\WPMovementController::class, "triggerEndSemesterSwitch"]);
+    
+    Route::post("/add-brites-to-premium-wallet", [\App\Http\Controllers\Api\WPMovementController::class, "addBritesToPremiumWallet"]);
+  });

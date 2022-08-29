@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
+use App\Enums\ClubPackType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Jenssegers\Mongodb\Auth\User as Authenticatable;
 use Jenssegers\Mongodb\Eloquent\HybridRelations;
+use Jenssegers\Mongodb\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @mixin Builder
  *
- * @property string _id
+ * @property string               _id
+ * @property string               clubPack
+ * @property Collection<Movement> $walletPremiumMovements
  */
 class User extends Authenticatable {
   use HasApiTokens, HasFactory, HybridRelations;
@@ -47,4 +52,22 @@ class User extends Authenticatable {
   protected $casts = [
     'email_verified_at' => 'datetime',
   ];
+  
+  /**
+   * @return bool
+   */
+  public function isPremium(): bool {
+    return $this->clubPack === ClubPackType::PREMIUM;
+  }
+  
+  public function getIdAttribute($value = null) {
+    return $value;
+  }
+  
+  /**
+   * @return HasMany
+   */
+  public function walletPremiumMovements(): HasMany {
+    return $this->hasMany(WPMovement::class, 'userId', '_id');
+  }
 }
