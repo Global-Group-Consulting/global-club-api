@@ -127,7 +127,7 @@ class Semester extends Model {
         $semesterData = self::parse($semesterId);
         
         // return only the semesters that have wallet premium usability
-        if ($semesterData->walletPremium->usableUntil->isFuture()) {
+        if ($semesterData->walletPremium->usableUntil->isFuture() && $semesterData->walletPremium->usableFrom->isPast()) {
           $semesters[] = [
             "id"      => $semesterId,
             "details" => $semesterData

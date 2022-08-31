@@ -128,15 +128,14 @@ class WPMovement extends Model {
     // If no movements were found, return an empty default array
     if ($wpMovements->count() === 0) {
       return [
-        "initialAmount"        => 0,
-        "incomeAmount"         => 0,
-        "incomePercentage"     => 0,
-        "withdrawalAmount"     => 0,
-        "withdrawalPercentage" => 0,
-        "usableAmount"         => 0,
-        "usablePercentage"     => 0,
-        "semesterDetails"      => Semester::parse($semester),
-        "movements"            => $includeMovements ? [] : null,
+        "initialAmount"       => 0,
+        "earned"              => 0,
+        "withdrawn"           => 0,
+        "withdrawable"        => 0,
+        "noMoreWithdrawable"  => 0,
+        "remainingToWithdraw" => 0,
+        "semesterDetails"     => Semester::parse($semester),
+        "movements"           => $includeMovements ? [] : null,
       ];
     }
     
@@ -186,6 +185,7 @@ class WPMovement extends Model {
     
     return [
       "initialAmount"       => $wpMovements->first()->initialAmount,
+      "earned"              => $wpMovements->last()->incomeAmount,
       "withdrawn"           => $withdrawnAmount,
       "withdrawable"        => $withdrawableAmount,
       "noMoreWithdrawable"  => $noMoreWithdrawableAmount,

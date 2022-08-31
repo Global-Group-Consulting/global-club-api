@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WPMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use MongoDB\BSON\ObjectId;
 
 class WPMovementController extends Controller {
   public function hello() {
@@ -27,15 +28,23 @@ class WPMovementController extends Controller {
    * @return array
    */
   public function userSummaryBySemester($semesterId, $userId): array {
+    $validatedData = validator([
+      'semesterId' => $semesterId,
+      'userId'     => $userId,
+    ], [
+      'semesterId' => 'required|string',
+      'userId'     => ['required', new \App\Rules\ObjectId()],
+    ])->validate();
+    
     /**
      * @var User $user
      */
     // $authUser = Auth::user();
-    $user = User::findOrFail($userId);
+    $user = User::findOrFail($validatedData['userId']);
     
     //TODO:: check if the user can view the summary of the requested user
     
-    return WPMovement::getSemesterSummary($semesterId, $user);
+    return WPMovement::getSemesterSummary($validatedData["semesterId"], $user);
   }
   
   /**
@@ -46,7 +55,13 @@ class WPMovementController extends Controller {
    * @return array
    */
   public function userSummary(string $userId): array {
-    $user           = User::findOrFail($userId);
+    $validatedData = validator([
+      'userId' => $userId,
+    ], [
+      'userId' => ['required', new \App\Rules\ObjectId()]
+    ])->validate();
+    
+    $user           = User::findOrFail($validatedData['userId']);
     $validSemesters = Semester::getPastValidSemesters();
     $data           = [];
     
