@@ -29,3 +29,11 @@ Route::middleware('auth.cronUser')
     
     Route::post("/add-brites-to-premium-wallet", [\App\Http\Controllers\Api\WPMovementController::class, "addBritesToPremiumWallet"]);
   });
+
+
+Route::middleware('auth.customToken')
+  ->prefix("wp")
+  ->group(function () {
+    Route::get('/{userId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummary"]);
+    Route::get('/{semesterId}/{userId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummaryBySemester"]);
+  });

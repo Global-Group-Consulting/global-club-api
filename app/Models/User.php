@@ -4,19 +4,21 @@ namespace App\Models;
 
 use App\Enums\ClubPackType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Jenssegers\Mongodb\Auth\User as Authenticatable;
 use Jenssegers\Mongodb\Eloquent\HybridRelations;
 use Jenssegers\Mongodb\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
+use MongoDB\BSON\ObjectId;
 
 /**
- * @mixin Builder
+ * @mixin \Illuminate\Database\Query\Builder
+ * @mixin \Illuminate\Database\Eloquent\Builder
  *
- * @property string               _id
+ * @property ObjectId             _id
  * @property string               clubPack
  * @property Collection<Movement> $walletPremiumMovements
+ *
  */
 class User extends Authenticatable {
   use HasApiTokens, HasFactory, HybridRelations;

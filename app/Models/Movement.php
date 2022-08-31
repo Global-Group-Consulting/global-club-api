@@ -61,6 +61,7 @@ class Movement extends Model {
         ]],
         ['$addFields' => [
           "remainingAmount" => ['$round' => [['$subtract' => ['$inAmount', '$outAmount']], 0]],
+          "userId"          => '$_id',
         ]],
         ['$match' => ["remainingAmount" => ['$gt' => 0]]],
       ]);

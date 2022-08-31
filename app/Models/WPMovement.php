@@ -4,13 +4,11 @@ namespace App\Models;
 
 use App\Casts\MongoObjectId;
 use App\Enums\WPMovementType;
-use App\Helpers\Semester;
+use App\Models\SubModels\Semester;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\Date;
-use Illuminate\Support\Str;
-use Jenssegers\Mongodb\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
+use Jenssegers\Mongodb\Eloquent\Model;
 use Jenssegers\Mongodb\Relations\BelongsTo;
 
 /**
@@ -25,9 +23,9 @@ use Jenssegers\Mongodb\Relations\BelongsTo;
  * @property int    $referenceSemester
  * @property int    $referenceYear
  * @property int    $referenceUsableUntil - Date until the amount was usable
- * @property string $withdrawalDate
- * @property string $withdrawableFrom
- * @property string $withdrawableUntil
+ * @property Carbon $withdrawalDate
+ * @property Carbon $withdrawableFrom
+ * @property Carbon $withdrawableUntil
  * @property string $movementType
  */
 class WPMovement extends Model {
@@ -72,16 +70,16 @@ class WPMovement extends Model {
    *
    * @return void
    */
-  protected static function booted() {
+  protected static function booted(): void {
     /**
      * Before creating a new WPMovement, add some automatic fields
      */
     static::creating(function (WPMovement $model) {
       $parsedSemester = Semester::parse($model->semester);
       
-      $model->referenceSemester    = $parsedSemester["semester"];
-      $model->referenceYear        = $parsedSemester["year"];
-      $model->referenceUsableUntil = $parsedSemester["usableUntil"];
+      $model->referenceSemester    = $parsedSemester->semester;
+      $model->referenceYear        = $parsedSemester->year;
+      $model->referenceUsableUntil = $parsedSemester->usableUntil;
       
       if ($model->withdrawableFrom) {
         $model->withdrawalDate = null;
@@ -110,14 +108,91 @@ class WPMovement extends Model {
     return parent::setAttribute($key, $castedValue);
   }
   
-  public function getUserIdAttribute($value = null) {
-    return $value;
-  }
-  
   /**
    * @return BelongsTo
    */
   public function user(): BelongsTo {
     return $this->belongsTo(User::class, 'userId', '_id');
   }
+  
+  /**
+   * @param  string  $semester
+   * @param  User    $user
+   * @param  bool    $includeMovements
+   *
+   * @return array
+   */
+  public static function getSemesterSummary(string $semester, User $user, bool $includeMovements = true): array {
+    $wpMovements = $user->walletPremiumMovements()->where("semester", $semester)->get();
+    
+    // If no movements were found, return an empty default array
+    if ($wpMovements->count() === 0) {
+      return [
+        "initialAmount"        => 0,
+        "incomeAmount"         => 0,
+        "incomePercentage"     => 0,
+        "withdrawalAmount"     => 0,
+        "withdrawalPercentage" => 0,
+        "usableAmount"         => 0,
+        "usablePercentage"     => 0,
+        "semesterDetails"      => Semester::parse($semester),
+        "movements"            => $includeMovements ? [] : null,
+      ];
+    }
+    
+    /**
+     * Amount that has already been withdrawn
+     */
+    $withdrawnAmount = $wpMovements->reduce(function ($acc, WPMovement $wpMovement) {
+      if ( !$wpMovement->withdrawalDate) {
+        return $acc;
+      }
+      
+      return $acc + $wpMovement->incomeAmount;
+    }, 0);
+    
+    /**
+     * Amount that is still available to be withdrawn this month
+     */
+    $withdrawableAmount = $wpMovements->reduce(function ($acc, WPMovement $wpMovement) {
+      // ignore already withdrawn movements
+      if ($wpMovement->withdrawalDate || $wpMovement->movementType === WPMovementType::INITIAL_DEPOSIT) {
+        return $acc;
+      }
+      
+      if (Carbon::now()->betweenIncluded($wpMovement->withdrawableFrom, $wpMovement->withdrawableUntil)) {
+        $acc = $acc + $wpMovement->incomeAmount;
+      }
+      
+      return $acc;
+    }, 0);
+    
+    /**
+     * Amount of the movements that has passed the withdrawableUntil date and has not been withdrawn yet.
+     */
+    $noMoreWithdrawableAmount = $wpMovements->reduce(function ($acc, WPMovement $wpMovement) {
+      // ignore already withdrawn movements or movements that are not yet withdrawable
+      if ($wpMovement->withdrawalDate || ($wpMovement->withdrawableFrom && $wpMovement->withdrawableFrom->greaterThan(Carbon::now()))) {
+        return $acc;
+      }
+      
+      return $acc + $wpMovement->incomeAmount;
+    }, 0);
+    
+    /**
+     * Amount that is still available to be withdrawn in the next months
+     */
+    $remainingToWithdraw = $wpMovements->first()->initialAmount - $withdrawnAmount - $noMoreWithdrawableAmount;
+    
+    return [
+      "initialAmount"       => $wpMovements->first()->initialAmount,
+      "withdrawn"           => $withdrawnAmount,
+      "withdrawable"        => $withdrawableAmount,
+      "noMoreWithdrawable"  => $noMoreWithdrawableAmount,
+      "remainingToWithdraw" => $remainingToWithdraw,
+      "semesterDetails"     => Semester::parse($semester),
+      "movements"           => $includeMovements ? $wpMovements : null,
+    ];
+  }
+  
 }

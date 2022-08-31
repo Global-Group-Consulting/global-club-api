@@ -10,7 +10,7 @@ use Jenssegers\Mongodb\Eloquent\Model;
 /**
  * @mixin Builder
  *
- * @property string $_id
+ * @property string $userId
  * @property array  $inMovements
  * @property float  $inAmount
  * @property float  $outAmount
@@ -22,7 +22,7 @@ use Jenssegers\Mongodb\Eloquent\Model;
 class PremiumBySemesterEntry extends Model {
   
   protected $fillable = [
-    "_id",
+    "userId",
     "inMovements",
     "inAmount",
     "outAmount",
@@ -32,6 +32,6 @@ class PremiumBySemesterEntry extends Model {
   ];
   
   public function user(): BelongsTo {
-    return $this->belongsTo(User::class, "_id", "_id");
+    return $this->belongsTo(User::class, "userId", "_id");
   }
 }

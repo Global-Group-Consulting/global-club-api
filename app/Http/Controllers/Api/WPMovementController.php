@@ -4,19 +4,66 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\WPMovementType;
 use App\Exceptions\WpMovementException;
-use App\Helpers\Semester;
 use App\Http\Controllers\Controller;
 use App\Jobs\AddBritesToPremiumWallet;
 use App\Models\JobList;
 use App\Models\Movement;
 use App\Models\SubModels\PremiumBySemesterEntry;
+use App\Models\SubModels\Semester;
+use App\Models\User;
 use App\Models\WPMovement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class WPMovementController extends Controller {
   public function hello() {
     return "Hello world!";
   }
+  
+  /**
+   * @param $semesterId
+   * @param $userId
+   *
+   * @return array
+   */
+  public function userSummaryBySemester($semesterId, $userId): array {
+    /**
+     * @var User $user
+     */
+    // $authUser = Auth::user();
+    $user = User::findOrFail($userId);
+    
+    //TODO:: check if the user can view the summary of the requested user
+    
+    return WPMovement::getSemesterSummary($semesterId, $user);
+  }
+  
+  /**
+   * Return the summary of all semesters for the given user.
+   *
+   * @param  string  $userId
+   *
+   * @return array
+   */
+  public function userSummary(string $userId): array {
+    $user           = User::findOrFail($userId);
+    $validSemesters = Semester::getPastValidSemesters();
+    $data           = [];
+    
+    //TODO:: check if the user can view the summary of the requested user
+    
+    foreach ($validSemesters as $semester) {
+      $data[] = WPMovement::getSemesterSummary($semester["id"], $user, false);
+    }
+    
+    return $data;
+  }
+  
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // CRON USER ROUTES
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
   /**
    * @param  Request  $request
@@ -45,7 +92,7 @@ class WPMovementController extends Controller {
    */
   public function addBritesToPremiumWallet(Request $request): array {
     $data = new PremiumBySemesterEntry($request->validate([
-      "_id"             => "required|string",
+      "userId"          => "required|string",
       "inAmount"        => "required|numeric",
       "outAmount"       => "required|numeric",
       "semester"        => "required|string",
@@ -77,6 +124,7 @@ class WPMovementController extends Controller {
         });
       
       return ["status"    => "initial movement already exists",
+              "userId"    => $user->_id->__toString(),
               "movements" => $movementIds];
     }
     
@@ -93,27 +141,14 @@ class WPMovementController extends Controller {
     for ($i = 0; $i < 24; $i++) {
       $percentage = ($data->remainingAmount * 4) / 100;
       
-      /*
-       * Se il semestre è scaduto il 30/06, la prima rendita sarà già il 16/07
-       */
-      $usableFrom = $semester["usableUntil"]->add(1, "millisecond")
-        ->addMonths($i)
-        ->setDay(16)
-        ->startOfDay();
-      
-      // usable until the next month
-      $usableUntil = $usableFrom->copy()->addMonth()
-        ->setDay(15)
-        ->endOfDay();
-      
       // create the movement
       $createdMovements[] = $user->walletPremiumMovements()->create([
         "initialAmount"     => $data->remainingAmount,
         "incomeAmount"      => $percentage,
         "incomePercentage"  => 4,
         "semester"          => $data->semester,
-        "withdrawableFrom"  => $usableFrom,
-        "withdrawableUntil" => $usableUntil,
+        "withdrawableFrom"  => $semester->walletPremium->byMonthUsability[$i]["usableFrom"],
+        "withdrawableUntil" => $semester->walletPremium->byMonthUsability[$i]["usableUntil"],
         "movementType"      => WPMovementType::MONTHLY_INCOME
       ]);
     }
@@ -124,6 +159,7 @@ class WPMovementController extends Controller {
     }, $createdMovements);
     
     return ["status"    => "ok",
+            "userId"    => $user->_id->__toString(),
             "movements" => $movementIds];
   }
 }
