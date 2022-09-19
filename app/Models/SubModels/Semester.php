@@ -4,11 +4,12 @@ namespace App\Models\SubModels;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * @property string              $id
- * @property int                 $year
- * @property int                 $semester
+ * @property int                 $year     The year of the semester
+ * @property int                 $semester Number of the semester (1 or 2)
  * @property Carbon              $usableFrom
  * @property Carbon              $usableUntil
  * @property WPSemesterUsability $walletPremium
@@ -25,6 +26,11 @@ class Semester extends Model {
     "walletPremium",
   ];
   
+  protected $casts = [
+    "usableFrom" => "datetime",
+    "usableUntil"  => "datetime",
+  ];
+  
   /**
    * Parse an incoming semester string and return the corresponding semester object.
    *
@@ -33,6 +39,11 @@ class Semester extends Model {
    * @return Semester
    */
   public static function parse(string $semester): Semester {
+    // Check if the semester string is valid
+    if ( !Str::match("/^([0-9]{4})_([0-9])$/", $semester)) {
+      throw new \InvalidArgumentException("Invalid semester format");
+    }
+    
     $parsedSemester = explode("_", $semester);
     
     return new Semester([
@@ -137,5 +148,38 @@ class Semester extends Model {
     }
     
     return $semesters;
+  }
+  
+  /**
+   * Return the current semester
+   *
+   * @return Semester
+   */
+  public static function getCurrentSemester(): Semester {
+    $now = Carbon::now();
+    
+    $semester = $now->month >= 7 ? 2 : 1;
+    
+    return self::parse($now->year . "_" . $semester);
+  }
+  
+  /**
+   * @param  string|null  $current
+   *
+   * @return Semester
+   */
+  public static function getPrevSemester(string $current = null): Semester {
+    $currentSemester = $current ? self::parse($current) : self::getCurrentSemester();
+    $semester        = [];
+    
+    if ($currentSemester->semester === 1) {
+      $semester[] = $currentSemester->year - 1;
+      $semester[] = 2;
+    } else {
+      $semester[] = $currentSemester->year;
+      $semester[] = 1;
+    }
+    
+    return self::parse(implode("_", $semester));
   }
 }

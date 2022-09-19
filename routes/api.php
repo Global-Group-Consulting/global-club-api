@@ -34,6 +34,11 @@ Route::middleware('auth.cronUser')
 Route::middleware('auth.customToken')
   ->prefix("wp")
   ->group(function () {
-    Route::get('/{userId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummary"]);
-    Route::get('/{semesterId}/{userId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummaryBySemester"]);
+    Route::get('/{wpMovementId}', [\App\Http\Controllers\Api\WPMovementController::class, "show"]);
+    
+    Route::get('/user-summary/{userId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummary"]);
+    Route::get('/user-summary-by-semester/{userId}/{semesterId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummaryBySemester"]);
+    
+    Route::post('/withdraw-by-semester', [\App\Http\Controllers\Api\WPMovementController::class, "withdrawBySemester"]);
+    Route::post('/{wpMovementId}/withdraw', [\App\Http\Controllers\Api\WPMovementController::class, "withdrawById"]);
   });

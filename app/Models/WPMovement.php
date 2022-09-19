@@ -3,30 +3,43 @@
 namespace App\Models;
 
 use App\Casts\MongoObjectId;
+use App\Enums\HttpStatusCodes;
 use App\Enums\WPMovementType;
+use App\Exceptions\WpMovementHttpException;
 use App\Models\SubModels\Semester;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Query\Builder;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
+use Jenssegers\Mongodb\Eloquent\Builder;
 use Jenssegers\Mongodb\Eloquent\Model;
 use Jenssegers\Mongodb\Relations\BelongsTo;
+use phpDocumentor\Reflection\Types\Integer;
+use Symfony\Component\HttpFoundation\Response as ResponseAlias;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * @mixin Builder
+ * @mixin \Illuminate\Database\Query\Builder
  *
- * @property string $_id
- * @property string $userId
- * @property float  $initialAmount
- * @property float  $incomeAmount
- * @property int    $incomePercentage
- * @property string $semester
- * @property int    $referenceSemester
- * @property int    $referenceYear
- * @property int    $referenceUsableUntil - Date until the amount was usable
- * @property Carbon $withdrawalDate
- * @property Carbon $withdrawableFrom
- * @property Carbon $withdrawableUntil
- * @property string $movementType
+ * @property string     $_id
+ * @property string     $userId
+ * @property float      $initialAmount
+ * @property float      $incomeAmount
+ * @property int        $incomePercentage
+ * @property string     $semester
+ * @property int        $referenceSemester
+ * @property int        $referenceYear
+ * @property int        $referenceUsableUntil - Date until the amount was usable
+ * @property Carbon     $withdrawalDate       - Date when all the amount was withdrawn
+ * @property float      $withdrawalRemaining  - Amount remaining after each withdrawal. Initially is the same as the $incomeAmount
+ * @property array      $withdrawalMovements  - Array of movements that were used to withdraw the amount
+ * @property Carbon     $withdrawableFrom
+ * @property Carbon     $withdrawableUntil
+ * @property string     $movementType
+ *
+ * @property-read  bool $hasWithdrawMovements
  */
 class WPMovement extends Model {
   use HasFactory;
@@ -64,6 +77,13 @@ class WPMovement extends Model {
     "movementType"         => "string",
   ];
   
+  /**
+   * The accessors to append to the model's array form.
+   *
+   * @var array
+   */
+  protected $appends = ['hasWithdrawMovements'];
+  
   
   /**
    * The "booted" method of the model.
@@ -81,6 +101,11 @@ class WPMovement extends Model {
       $model->referenceYear        = $parsedSemester->year;
       $model->referenceUsableUntil = $parsedSemester->usableUntil;
       
+      if ($model->movementType === WPMovementType::MONTHLY_INCOME) {
+        $model->withdrawalRemaining = $model->incomeAmount;
+        $model->withdrawalMovements = [];
+      }
+      
       if ($model->withdrawableFrom) {
         $model->withdrawalDate = null;
       }
@@ -89,6 +114,26 @@ class WPMovement extends Model {
     });
   }
   
+  /**
+   * @param  Movement  $movement
+   *
+   * @return void
+   */
+  public function addWithdrawMovement(Movement $movement): void {
+    if (is_null($this->withdrawalMovements)) {
+      $this->withdrawalMovements = [$movement->toArray()];
+    } else {
+      $this->withdrawalMovements = array_merge([$movement->toArray()], $this->withdrawalMovements);
+    }
+    
+    $this->withdrawalRemaining -= $movement->amountChange;
+    
+    if ($this->withdrawalRemaining <= 0) {
+      $this->withdrawalDate = Carbon::now();
+    }
+    
+    $this->save();
+  }
   
   /**
    * Before setting the value of an attribute, check if it must be cast.
@@ -109,6 +154,15 @@ class WPMovement extends Model {
   }
   
   /**
+   * Get the user's first name.
+   *
+   * @return bool
+   */
+  protected function getHasWithdrawMovementsAttribute(): bool {
+    return $this->withdrawalMovements && count($this->withdrawalMovements) > 0;
+  }
+  
+  /**
    * @return BelongsTo
    */
   public function user(): BelongsTo {
@@ -120,10 +174,15 @@ class WPMovement extends Model {
    * @param  User    $user
    * @param  bool    $includeMovements
    *
-   * @return array
+   * @return array{initialAmount: float, earned: float, withdrawal: float}
    */
   public static function getSemesterSummary(string $semester, User $user, bool $includeMovements = true): array {
+    /**
+     * @var Collection<WPMovement> $wpMovements
+     */
     $wpMovements = $user->walletPremiumMovements()->where("semester", $semester)->get();
+    $wpMovements->makeHidden(['withdrawalMovements']);
+    $currMonthMovement = $wpMovements->firstWhere(fn($movement) => Carbon::now()->between($movement->withdrawableFrom, $movement->withdrawableUntil));
     
     // If no movements were found, return an empty default array
     if ($wpMovements->count() === 0) {
@@ -142,46 +201,44 @@ class WPMovement extends Model {
     /**
      * Amount that has already been withdrawn
      */
-    $withdrawnAmount = $wpMovements->reduce(function ($acc, WPMovement $wpMovement) {
-      if ( !$wpMovement->withdrawalDate) {
+    /*$withdrawnAmount = $wpMovements->reduce(function ($acc, WPMovement $wpMovement) {
+      if ( !$wpMovement->hasWithdrawMovements) {
         return $acc;
       }
       
-      return $acc + $wpMovement->incomeAmount;
-    }, 0);
+      $withdrawn = $wpMovement->incomeAmount - $wpMovement->withdrawalRemaining;
+      
+      return $acc + $withdrawn;
+    }, 0);*/
+    $withdrawnAmount = $currMonthMovement->incomeAmount - $currMonthMovement->withdrawalRemaining;
     
     /**
      * Amount that is still available to be withdrawn this month
      */
-    $withdrawableAmount = $wpMovements->reduce(function ($acc, WPMovement $wpMovement) {
-      // ignore already withdrawn movements
-      if ($wpMovement->withdrawalDate || $wpMovement->movementType === WPMovementType::INITIAL_DEPOSIT) {
-        return $acc;
-      }
-      
-      if (Carbon::now()->betweenIncluded($wpMovement->withdrawableFrom, $wpMovement->withdrawableUntil)) {
-        $acc = $acc + $wpMovement->incomeAmount;
-      }
-      
-      return $acc;
-    }, 0);
+    $withdrawableAmount = $currMonthMovement->withdrawalRemaining ?? 0;
     
     /**
      * Amount of the movements that has passed the withdrawableUntil date and has not been withdrawn yet.
      */
     $noMoreWithdrawableAmount = $wpMovements->reduce(function ($acc, WPMovement $wpMovement) {
       // ignore already withdrawn movements or movements that are not yet withdrawable
-      if ($wpMovement->withdrawalDate || ($wpMovement->withdrawableFrom && $wpMovement->withdrawableFrom->greaterThan(Carbon::now()))) {
+      if ( !$wpMovement->withdrawableFrom || $wpMovement->withdrawableFrom->greaterThan(Carbon::now())) {
         return $acc;
       }
       
-      return $acc + $wpMovement->incomeAmount;
+      return $acc + $wpMovement->withdrawalRemaining;
     }, 0);
     
     /**
      * Amount that is still available to be withdrawn in the next months
      */
-    $remainingToWithdraw = $wpMovements->first()->initialAmount - $withdrawnAmount - $noMoreWithdrawableAmount;
+    $remainingToWithdraw = $wpMovements
+      // Filter only the movements that are still withdrawable
+      ->filter(fn($movement) => $movement->withdrawableUntil && $movement->withdrawableUntil->greaterThan(Carbon::now()))
+      // Reduce and sum the remaining amount
+      ->reduce(function ($acc, WPMovement $wpMovement) {
+        return $acc + $wpMovement->withdrawalRemaining;
+      }, 0);
     
     return [
       "initialAmount"       => $wpMovements->first()->initialAmount,
@@ -195,4 +252,25 @@ class WPMovement extends Model {
     ];
   }
   
+  /**
+   * @param $amount
+   *
+   * @return void
+   * @throws WpMovementHttpException
+   */
+  public function checkIsWithdrawable($amount): void {
+    $now = Carbon::now();
+    
+    // check if the movement is withdrawable based on the dates
+    // $now must be between the withdrawableFrom and withdrawableUntil dates
+    if ( !$now->betweenIncluded($this->withdrawableFrom, $this->withdrawableUntil)) {
+      throw new WpMovementHttpException(HttpStatusCodes::HTTP_NOT_ACCEPTABLE, "The movement is not withdrawable");
+    }
+    
+    // check if the amount is not greater than the withdrawable amount
+    if ($amount > $this->incomeAmount || $this->withdrawalRemaining < $amount) {
+      throw new WpMovementHttpException(HttpStatusCodes::HTTP_NOT_ACCEPTABLE, "The amount is greater than the withdrawable amount");
+    }
+    
+  }
 }

@@ -18,6 +18,12 @@ enum MovementType {
   // When a user uses them
   const DEPOSIT_USED = "deposit_used";
   
+  // When a user transfer brites from premium wallet to normal wallet of another user
+  const DEPOSIT_RECEIVED_WP = "deposit_received_wp";
+  
+  // When a user unlock brites from premium wallet to its own normal wallet
+  const DEPOSIT_UNLOCKED_WP = "deposit_unlocked_wp";
+  
   const IN_MOVEMENTS = [self::INTEREST_RECAPITALIZED, self::DEPOSIT_ADDED];
   const OUT_MOVEMENTS = [self::DEPOSIT_REMOVED, self::DEPOSIT_TRANSFERRED, self::DEPOSIT_USED];
 }

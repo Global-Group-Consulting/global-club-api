@@ -2,14 +2,18 @@
 
 namespace App\Models;
 
+use App\Casts\MongoObjectId;
 use App\Enums\ClubPackType;
 use App\Enums\MovementType;
 use App\Models\SubModels\PremiumBySemesterEntry;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Models\SubModels\Semester;
+use App\Traits\Models\CamelCasing;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Jenssegers\Mongodb\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 
@@ -27,11 +31,54 @@ use Illuminate\Database\Query\Builder;
  * @property string $updatedAt
  * @property string $semesterId
  * @property string $clubPack
+ * @property string $fromUUID
+ * @property string $createdBy
+ * @property string $notes
+ * @property string $order
+ * @property string $clubPackChange
+ * @property string $referenceYear
  */
 class Movement extends Model {
   use HasFactory;
+  use CamelCasing;
   
   protected $primaryKey = '_id';
+  
+  protected $fillable = [
+    'userId',
+    'amountChange',
+    'movementType',
+    'referenceSemester',
+    'semesterId',
+    'clubPack',
+    'fromUUID',
+    'amountChange',
+    'notes',
+    'order',
+    'referenceYear',
+  ];
+  
+  protected $dates = ['usableFrom', 'expiresAt'];
+  
+  protected $casts = [
+    "userId"     => MongoObjectId::class,
+    "usableFrom" => "datetime",
+    "expiresAt"  => "datetime",
+  ];
+  
+  public static function boot() {
+    parent::boot();
+    
+    self::creating(function (Movement $movement) {
+      $parsedSemester       = Semester::parse($movement->semesterId);
+      $movement->expiresAt  = $parsedSemester->usableUntil;
+      $movement->usableFrom = $parsedSemester->usableFrom;
+      
+      $movement->referenceSemester = $parsedSemester->semester;
+      $movement->referenceYear     = $parsedSemester->year;
+    });
+  }
+  
   
   /**
    * Return a list of totals grouped by users for the specified semester.
@@ -82,4 +129,5 @@ class Movement extends Model {
       return new PremiumBySemesterEntry($item->toArray());
     });
   }
+  
 }
