@@ -133,10 +133,11 @@ class WPMovementController extends Controller {
     // Get the movements will be handled for the given semesters
     $movements = WPMovement::where("withdrawableFrom", "<", Carbon::now())
       ->where("withdrawableUntil", ">", Carbon::now())
+      ->where("userId", Auth::id())
       ->whereIn("semester", $data["semesters"])
       ->get();
     
-    $totalAvailable = $movements->sum("withdrawalRemaining");
+    $totalAvailable    = $movements->sum("withdrawalRemaining");
     $multipleSemesters = count($data["semesters"]) > 1;
     
     if ( !$movements->count() || ($multipleSemesters && $totalAvailable !== (float) $data["amount"])) {
@@ -162,12 +163,20 @@ class WPMovementController extends Controller {
     /** @var User $user */
     $user = Auth::user();
     
-    if ($wpMovement->user->_id != $user->_id && !$user->isAdmin()) {
+    $withdrawForAnotherUser = $wpMovement->user->_id != $user->_id;
+    $transferToSelf         = $userCardNum && $userCardNum === $user->clubCardNumber;
+    
+    if (($withdrawForAnotherUser && !$user->isAdmin())) {
       throw new WpMovementHttpException(HttpStatusCodes::HTTP_FORBIDDEN, "You are not allowed to withdraw from this wallet.");
+    }
+    
+    if ($transferToSelf) {
+      throw new WpMovementHttpException(HttpStatusCodes::HTTP_BAD_REQUEST, "You must specify a different club card number that your own.");
     }
     
     // by default, the user is withdrawing from his own wallet
     $destinationUser = $user;
+    
     
     // If there is a userCardNum I must transfer the money to that user's account
     if (isset($userCardNum)) {
@@ -201,7 +210,7 @@ class WPMovementController extends Controller {
         : "Wallet Premium - Brite sbloccati per il mese di {$date->translatedFormat('F')}",
       "order"        => null,
     ]);
-    
+   
     // once created the movement, create an internal movement for the wpMovement
     // Store the movement id in the wpMovement
     try {
