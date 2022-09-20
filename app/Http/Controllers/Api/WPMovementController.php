@@ -136,17 +136,15 @@ class WPMovementController extends Controller {
       ->whereIn("semester", $data["semesters"])
       ->get();
     
-    //      $result[] = $this->withdraw($movement, $data["amount"], key_exists("userCardNum", $data) ? $data["userCardNum"] : null);
-    
     $totalAvailable = $movements->sum("withdrawalRemaining");
+    $multipleSemesters = count($data["semesters"]) > 1;
     
-    if ( !$movements->count() || $totalAvailable !== (float) $data["amount"]) {
-      dump($movements->count(), $totalAvailable, (float) $data["amount"]);
+    if ( !$movements->count() || ($multipleSemesters && $totalAvailable !== (float) $data["amount"])) {
       throw new WpMovementHttpException(HttpStatusCodes::HTTP_BAD_REQUEST, "Invalid amount specified");
     }
     
-    return $movements->map(function (WPMovement $movement) use ($data) {
-      return $this->withdraw($movement, $movement->withdrawalRemaining, key_exists("userCardNum", $data) ? $data["userCardNum"] : null);
+    return $movements->map(function (WPMovement $movement) use ($data, $multipleSemesters) {
+      return $this->withdraw($movement, ($multipleSemesters ? $movement->withdrawalRemaining : $data["amount"]), (key_exists("userCardNum", $data) ? $data["userCardNum"] : null));
     });
   }
   
