@@ -206,7 +206,7 @@ class WPMovementController extends Controller {
       "createdBy"    => $user->_id,
       "fromUUID"     => null,
       "notes"        => $isTransfer ?
-        "Wallet Premium - Da parte di {$user->getFullName()}" . ($user->clubCardNumber ? " ($user->clubCardNumber)" : '')
+        "Wallet Premium - Trasferimento da {$user->getFullName()}" . ($user->clubCardNumber ? " ($user->clubCardNumber)" : '')
         : "Wallet Premium - Brite sbloccati per il mese di {$date->translatedFormat('F')}",
       "order"        => null,
     ]);
