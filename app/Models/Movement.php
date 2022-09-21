@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MongoObjectId;
+use App\Classes\CustomModel;
 use App\Enums\ClubPackType;
 use App\Enums\MovementType;
 use App\Models\SubModels\PremiumBySemesterEntry;
@@ -38,9 +39,8 @@ use Illuminate\Database\Query\Builder;
  * @property string $clubPackChange
  * @property string $referenceYear
  */
-class Movement extends Model {
+class Movement extends CustomModel {
   use HasFactory;
-  use CamelCasing;
   
   protected $primaryKey = '_id';
   
@@ -77,6 +77,10 @@ class Movement extends Model {
       $movement->referenceSemester = $parsedSemester->semester;
       $movement->referenceYear     = $parsedSemester->year;
     });
+  }
+  
+  public function user() {
+    return $this->belongsTo(User::class, 'userId', '_id');
   }
   
   

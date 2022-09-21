@@ -3,15 +3,19 @@
 namespace App\Models;
 
 use App\Casts\MongoObjectId;
+use App\Classes\CustomModel;
 use App\Enums\HttpStatusCodes;
+use App\Enums\MovementType;
 use App\Enums\WPMovementType;
 use App\Exceptions\WpMovementHttpException;
 use App\Models\SubModels\Semester;
+use App\Traits\Models\CamelCasing;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Jenssegers\Mongodb\Eloquent\Builder;
 use Jenssegers\Mongodb\Eloquent\Model;
 use Jenssegers\Mongodb\Relations\BelongsTo;
@@ -41,7 +45,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  *
  * @property-read  bool $hasWithdrawMovements
  */
-class WPMovement extends Model {
+class WPMovement extends CustomModel {
   use HasFactory;
   
   protected $table = "wp_movements";
@@ -120,10 +124,18 @@ class WPMovement extends Model {
    * @return void
    */
   public function addWithdrawMovement(Movement $movement): void {
+    $movementData = $movement->toArray();
+    
+    if ($movement->movementType === MovementType::DEPOSIT_RECEIVED_WP) {
+      $user = $movement->user;
+  
+      $movementData["notes"] = "Wallet Premium - Trasferimento a favore di {$user->getFullName()}" . ($user->clubCardNumber ? " ($user->clubCardNumber)" : '');
+    }
+    
     if (is_null($this->withdrawalMovements)) {
-      $this->withdrawalMovements = [$movement->toArray()];
+      $this->withdrawalMovements = [$movementData];
     } else {
-      $this->withdrawalMovements = array_merge([$movement->toArray()], $this->withdrawalMovements);
+      $this->withdrawalMovements = array_merge([$movementData], $this->withdrawalMovements);
     }
     
     $this->withdrawalRemaining -= $movement->amountChange;
@@ -167,6 +179,28 @@ class WPMovement extends Model {
    */
   public function user(): BelongsTo {
     return $this->belongsTo(User::class, 'userId', '_id');
+  }
+  
+  /**
+   * @param $amount
+   *
+   * @return void
+   * @throws WpMovementHttpException
+   */
+  public function checkIsWithdrawable($amount): void {
+    $now = Carbon::now();
+    
+    // check if the movement is withdrawable based on the dates
+    // $now must be between the withdrawableFrom and withdrawableUntil dates
+    if ( !$now->betweenIncluded($this->withdrawableFrom, $this->withdrawableUntil)) {
+      throw new WpMovementHttpException(HttpStatusCodes::HTTP_NOT_ACCEPTABLE, "The movement is not withdrawable");
+    }
+    
+    // check if the amount is not greater than the withdrawable amount
+    if ($amount > $this->incomeAmount || $this->withdrawalRemaining < $amount) {
+      throw new WpMovementHttpException(HttpStatusCodes::HTTP_NOT_ACCEPTABLE, "The amount is greater than the withdrawable amount");
+    }
+    
   }
   
   /**
@@ -252,25 +286,4 @@ class WPMovement extends Model {
     ];
   }
   
-  /**
-   * @param $amount
-   *
-   * @return void
-   * @throws WpMovementHttpException
-   */
-  public function checkIsWithdrawable($amount): void {
-    $now = Carbon::now();
-    
-    // check if the movement is withdrawable based on the dates
-    // $now must be between the withdrawableFrom and withdrawableUntil dates
-    if ( !$now->betweenIncluded($this->withdrawableFrom, $this->withdrawableUntil)) {
-      throw new WpMovementHttpException(HttpStatusCodes::HTTP_NOT_ACCEPTABLE, "The movement is not withdrawable");
-    }
-    
-    // check if the amount is not greater than the withdrawable amount
-    if ($amount > $this->incomeAmount || $this->withdrawalRemaining < $amount) {
-      throw new WpMovementHttpException(HttpStatusCodes::HTTP_NOT_ACCEPTABLE, "The amount is greater than the withdrawable amount");
-    }
-    
-  }
 }
