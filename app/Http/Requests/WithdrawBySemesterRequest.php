@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\ObjectId;
 use App\Rules\SemesterId;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -25,6 +26,7 @@ class WithdrawBySemesterRequest extends FormRequest {
       "amount"      => "required|numeric",
       "semesters"   => ["required", "array", new SemesterId()],
       "userCardNum" => "nullable|string",
+      "userId"      => ["nullable", new ObjectId()],
     ];
   }
 }

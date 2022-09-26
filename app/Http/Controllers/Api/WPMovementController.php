@@ -128,12 +128,25 @@ class WPMovementController extends Controller {
    * @param  WithdrawBySemesterRequest  $request
    */
   public function withdrawBySemester(WithdrawBySemesterRequest $request) {
-    $data = $request->validated();
+    $rules = $request->rules();
+    
+    /** @var User $authUser */
+    $authUser = Auth::user();
+    
+    // If the user is admin, must provide the userId
+    if ($authUser->isAdmin()) {
+      $rules["userId"] = ['required', new \App\Rules\ObjectId()];
+    }
+    
+    $data = $request->validate($rules);
+    // If the user is admin, fetch the requested user, otherwise use the logged one
+    $user = $authUser->isAdmin() ? User::findOrFail($data["userId"]) : $authUser;
     
     // Get the movements will be handled for the given semesters
     $movements = WPMovement::where("withdrawableFrom", "<", Carbon::now())
       ->where("withdrawableUntil", ">", Carbon::now())
-      ->where("userId", Auth::id())
+      // if the request is made by an admin, must specify the userId
+      ->where("userId", $user->_id)
       ->whereIn("semester", $data["semesters"])
       ->get();
     
@@ -210,7 +223,7 @@ class WPMovementController extends Controller {
         : "Wallet Premium - Brite sbloccati per il mese di {$date->translatedFormat('F')}",
       "order"        => null,
     ]);
-   
+    
     // once created the movement, create an internal movement for the wpMovement
     // Store the movement id in the wpMovement
     try {
