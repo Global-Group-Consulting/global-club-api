@@ -26,6 +26,7 @@ use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Validator;
 use MongoDB\BSON\ObjectId;
 
@@ -266,6 +267,8 @@ class WPMovementController extends Controller {
     }
     
     $movements->each(function (PremiumBySemesterEntry $movement) use ($job) {
+      Log::info("Dispatching job for user {$movement->user->getFullName()}");
+      
       // Adds to the queue a job for each user
       // This job will be handled by the "queue" app
       // that will make a http call to the local "api/wp/add-brites-to-premium-wallet" route
