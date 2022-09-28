@@ -18,8 +18,7 @@ use Illuminate\Support\Facades\Route;
     return $request->user();
 });*/
 
-Route::middleware('auth.customToken')
-  ->get('/hello', [\App\Http\Controllers\Api\WPMovementController::class, "hello"]);
+Route::get('/hello', [\App\Http\Controllers\Api\WPMovementController::class, "hello"]);
 
 
 Route::middleware('auth.cronUser')
