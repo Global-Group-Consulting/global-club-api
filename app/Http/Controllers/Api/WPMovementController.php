@@ -267,7 +267,8 @@ class WPMovementController extends Controller {
     }
     
     $movements->each(function (PremiumBySemesterEntry $movement) use ($job) {
-      Log::info("Dispatching job for user {$movement->user->getFullName()}");
+      dump($movement->toArray());
+      Log::info("Dispatching job for user {$movement->user->getFullName()} on queue {$job->queueName}");
       
       // Adds to the queue a job for each user
       // This job will be handled by the "queue" app
