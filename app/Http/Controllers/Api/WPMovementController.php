@@ -12,6 +12,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\WithdrawBySemesterRequest;
 use App\Http\Requests\WithdrawRequest;
 use App\Jobs\AddBritesToPremiumWallet;
+use App\Jobs\CreateNotification;
+use App\Jobs\NotifyWPNewSemester;
 use App\Models\JobList;
 use App\Models\Movement;
 use App\Models\SubModels\PremiumBySemesterEntry;
@@ -253,10 +255,15 @@ class WPMovementController extends Controller {
   public function triggerEndSemesterSwitch(Request $request) {
     $data = $request->validate([
       "semester" => "required|string",
+      "userIds"  => "nullable|array"
     ]);
     
     $job       = JobList::where("class", "App\Jobs\AddBritesToPremiumWallet")->first();
-    $movements = Movement::getPremiumBySemester($data["semester"]);
+    $movements = Movement::getPremiumBySemester($data["semester"], $data["userIds"] ?? null);
+    
+    if ( !$movements->count()) {
+      throw new WpMovementHttpException(HttpStatusCodes::HTTP_BAD_REQUEST, "No movements found for the given semester and user");
+    }
     
     $movements->each(function (PremiumBySemesterEntry $movement) use ($job) {
       // Adds to the queue a job for each user
@@ -339,6 +346,9 @@ class WPMovementController extends Controller {
     $movementIds = array_map(function ($movement) {
       return $movement["_id"];
     }, $createdMovements);
+    
+    // Notify the user that the brites have been added to the wallet
+    NotifyWPNewSemester::dispatchSync($user, $createdMovements[0]);
     
     return ["status"    => "ok",
             "userId"    => $user->_id->__toString(),
