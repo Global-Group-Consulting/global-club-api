@@ -14,5 +14,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+  $phrases = \Illuminate\Support\Facades\Http::get("https://randomwordgenerator.com/json/phrases.json")->json();
+  
+  $random = rand(0, count($phrases["data"]) - 1);
+  $phrase = $phrases["data"][$random];
+  
+  return view('index', [
+    "phrase"  => $phrase["phrase"],
+    "meaning" => $phrase["meaning"],
+  ]);
 });

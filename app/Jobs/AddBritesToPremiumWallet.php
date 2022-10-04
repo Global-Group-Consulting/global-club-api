@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class AddBritesToPremiumWallet implements ShouldQueue {
   use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -38,6 +39,8 @@ class AddBritesToPremiumWallet implements ShouldQueue {
    * @return void
    */
   public function handle(): void {
+    dump($this->data);
     // job will be handled by the queue app
+    Log::info("handled JOb");
   }
 }

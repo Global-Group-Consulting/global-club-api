@@ -95,10 +95,20 @@ class Movement extends CustomModel {
    *
    * @return Collection<PremiumBySemesterEntry>
    */
-  public static function getPremiumBySemester(string $semesterId, bool $includeMovements = false): Collection {
-    $res = self::raw(function ($collection) use ($semesterId) {
+  public static function getPremiumBySemester(string $semesterId, array $userIds = null, bool $includeMovements = false): Collection {
+    $res = self::raw(function ($collection) use ($semesterId, $userIds) {
+      $match = ["clubPack" => ClubPackType::PREMIUM, "semesterId" => $semesterId];
+      
+      if ($userIds) {
+        $userIds = collect($userIds)->map(function ($userId) {
+          return new \MongoDB\BSON\ObjectId($userId);
+        })->toArray();
+        
+        $match["userId"] = ['$in' => $userIds];
+      }
+      
       return $collection->aggregate([
-        ['$match' => ["clubPack" => ClubPackType::PREMIUM, "semesterId" => $semesterId]],
+        ['$match' => $match],
         ['$group' => [
           "_id"          => '$userId',
           // "movements"    => ['$push' => '$$ROOT'],
