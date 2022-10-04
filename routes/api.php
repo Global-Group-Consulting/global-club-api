@@ -18,5 +18,26 @@ use Illuminate\Support\Facades\Route;
     return $request->user();
 });*/
 
+Route::get('/hello', [\App\Http\Controllers\Api\WPMovementController::class, "hello"]);
+
+
+Route::middleware('auth.cronUser')
+  ->prefix("wp")
+  ->group(function () {
+    Route::get('/trigger-end-semester-switch', [\App\Http\Controllers\Api\WPMovementController::class, "triggerEndSemesterSwitch"]);
+    
+    Route::post("/add-brites-to-premium-wallet", [\App\Http\Controllers\Api\WPMovementController::class, "addBritesToPremiumWallet"]);
+  });
+
+
 Route::middleware('auth.customToken')
-  ->get('/hello', [\App\Http\Controllers\Api\WPMovementController::class, "hello"]);
+  ->prefix("wp")
+  ->group(function () {
+    Route::get('/{wpMovementId}', [\App\Http\Controllers\Api\WPMovementController::class, "show"]);
+    
+    Route::get('/user-summary/{userId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummary"]);
+    Route::get('/user-summary-by-semester/{userId}/{semesterId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummaryBySemester"]);
+    
+    Route::post('/withdraw-by-semester', [\App\Http\Controllers\Api\WPMovementController::class, "withdrawBySemester"]);
+    Route::post('/{wpMovementId}/withdraw', [\App\Http\Controllers\Api\WPMovementController::class, "withdrawById"]);
+  });

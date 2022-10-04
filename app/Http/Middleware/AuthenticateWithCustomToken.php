@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\App;
 use App\Models\User;
 use Closure;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,9 +20,9 @@ class AuthenticateWithCustomToken {
    * @param  Request                                        $request
    * @param  Closure(Request): (Response|RedirectResponse)  $next
    *
-   * @return Response|RedirectResponse
+   * @return Response|RedirectResponse|JsonResponse
    */
-  public function handle(Request $request, Closure $next): Response|RedirectResponse {
+  public function handle(Request $request, Closure $next) {
     $headers  = $request->headers;
     $authUser = $request->get("_auth_user");
     
