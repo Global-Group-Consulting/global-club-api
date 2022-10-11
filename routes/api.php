@@ -24,7 +24,8 @@ Route::get('/hello', [\App\Http\Controllers\Api\WPMovementController::class, "he
 Route::middleware('auth.cronUser')
   ->prefix("wp")
   ->group(function () {
-    Route::get('/trigger-end-semester-switch', [\App\Http\Controllers\Api\WPMovementController::class, "triggerEndSemesterSwitch"]);
+    Route::post('/trigger-end-semester-switch', [\App\Http\Controllers\Api\WPMovementController::class, "triggerEndSemesterSwitch"]);
+    Route::post('/notify-wp-before-recapitalization', [\App\Http\Controllers\Api\WPMovementController::class, "notifyWPBeforeRecapitalization"]);
     
     Route::post("/add-brites-to-premium-wallet", [\App\Http\Controllers\Api\WPMovementController::class, "addBritesToPremiumWallet"]);
   });
