@@ -2,17 +2,18 @@
 
 namespace App\Jobs;
 
-use App\Enums\WPMovementType;
-use App\Models\WPMovement;
+use App\Models\SubModels\Semester;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class TestJob implements ShouldQueue {
+class TriggerEndSemesterSwitch implements ShouldQueue {
   use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+  
+  public array $data = ["semester" => null];
   
   /**
    * Create a new job instance.
@@ -20,7 +21,8 @@ class TestJob implements ShouldQueue {
    * @return void
    */
   public function __construct() {
-    //
+    // Trigger end semester switch on the last expired semester
+    $this->data["semester"] = Semester::getLastExpired()->id;
   }
   
   /**
@@ -29,11 +31,6 @@ class TestJob implements ShouldQueue {
    * @return void
    */
   public function handle() {
-    $user     = \App\Models\User::find("5fceb07c64879300214f8de0");
-    $movement = WPMovement::where("user_id", $user->id)
-      ->where("movementType", WPMovementType::INITIAL_DEPOSIT)
-      ->first();
-    
-    NotifyWPNewSemester::dispatchSync($user, $movement);
+    // job usato solo per il dispatch. Poi verrà invocato dall'app queue che invocherà una rotta dedicata
   }
 }

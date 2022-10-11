@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Syncronous;
 
 use App\Enums\AppType;
 use App\Enums\NotificationType;
 use App\Enums\PlatformType;
+use App\Jobs\CreateNotification;
 use App\Models\JobList;
 use App\Models\User;
 use App\Models\WPMovement;
@@ -16,6 +17,9 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Env;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Job that should be dispatched from synchronously
+ */
 class NotifyWPNewSemester implements ShouldQueue {
   use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
   
@@ -43,9 +47,8 @@ class NotifyWPNewSemester implements ShouldQueue {
     $initialMovement = $this->initialMovement;
     $job             = JobList::where("class", "App\Jobs\CreateNotification")->first();
     
-    
     CreateNotification::dispatch([
-      "title"     => "WP - Nuovo semestre aggiunto?",
+      "title"     => "WP - Nuovo semestre aggiunto",
       "content"   => "Sul suo Wallet Premium sono stati aggiunti i brite scaduti relativi al semestre {$initialMovement->semester}. Acceda al suo wallet per scoprire come li può utilizzare!",
       "app"       => AppType::CLUB,
       "type"      => NotificationType::WP_NEW_SEMESTER,
