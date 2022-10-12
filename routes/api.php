@@ -18,19 +18,24 @@ use Illuminate\Support\Facades\Route;
     return $request->user();
 });*/
 
-Route::get('/hello', [\App\Http\Controllers\Api\WPMovementController::class, "hello"]);
+Route::get('/hello', [\App\Http\Controllers\Api\HomeController::class, "hello"]);
 
+
+// ****************************************************************************************************************
+// CRON routes
 
 Route::middleware('auth.cronUser')
   ->prefix("wp")
   ->group(function () {
-    Route::post('/trigger-end-semester-switch', [\App\Http\Controllers\Api\WPMovementController::class, "triggerEndSemesterSwitch"]);
-    Route::post('/notify-wp-before-recapitalization', [\App\Http\Controllers\Api\WPMovementController::class, "notifyWPBeforeRecapitalization"]);
-    
-    Route::post("/add-brites-to-premium-wallet", [\App\Http\Controllers\Api\WPMovementController::class, "addBritesToPremiumWallet"]);
+    Route::post('/trigger-end-semester-switch', [\App\Http\Controllers\Api\Crons\WalletPremium::class, "triggerEndSemesterSwitch"]);
+    Route::post('/notify-wp-before-recapitalization', [\App\Http\Controllers\Api\Crons\WalletPremium::class, "notifyWPBeforeRecapitalization"]);
+    Route::post("/add-brites-to-premium-wallet", [\App\Http\Controllers\Api\Crons\WalletPremium::class, "addBritesToPremiumWallet"]);
   });
 
+// ****************************************************************************************************************
+// API routes
 
+// Wallet Premium
 Route::middleware('auth.customToken')
   ->prefix("wp")
   ->group(function () {
