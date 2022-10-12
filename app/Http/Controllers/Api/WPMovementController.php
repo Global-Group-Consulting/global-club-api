@@ -343,6 +343,16 @@ class WPMovementController extends Controller {
     $semester         = Semester::parse($data->semester);
     $createdMovements = [];
     
+    // immediately calculate the amount of brites
+    $percentage = round(($data->remainingAmount * 4) / 100);
+    
+    // if the percentage is 0, the user will not receive any brite, so we can return already
+    if ( !$percentage) {
+      return ["status"    => "No brites to add - nothing done",
+              "userId"    => $user->_id->__toString(),
+              "movements" => []];
+    }
+    
     // Create initial deposit movement
     $createdMovements[] = $user->walletPremiumMovements()->create([
       "initialAmount" => $data->remainingAmount,
@@ -351,7 +361,6 @@ class WPMovementController extends Controller {
     
     // Create 24 new movements for each future month
     for ($i = 0; $i < 24; $i++) {
-      $percentage = ($data->remainingAmount * 4) / 100;
       
       // create the movement
       $createdMovements[] = $user->walletPremiumMovements()->create([
