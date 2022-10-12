@@ -27,9 +27,13 @@ class Semester extends Model {
   ];
   
   protected $casts = [
-    "usableFrom" => "datetime",
-    "usableUntil"  => "datetime",
+    "usableFrom"  => "datetime",
+    "usableUntil" => "datetime",
   ];
+  
+  public function isExpired() {
+    return $this->usableUntil->isPast();
+  }
   
   /**
    * Parse an incoming semester string and return the corresponding semester object.
@@ -148,6 +152,25 @@ class Semester extends Model {
     }
     
     return $semesters;
+  }
+  
+  /**
+   * Returns the last expired semester
+   *
+   * @return Semester|null
+   */
+  public static function getLastExpired() {
+    $lastSemester = self::getPrevSemester();
+    
+    for ($i = 0; $i < 10; $i++) {
+      if ($lastSemester->isExpired()) {
+        break;
+      }
+      
+      $lastSemester = self::getPrevSemester($lastSemester->id);
+    }
+    
+    return $lastSemester;
   }
   
   /**
