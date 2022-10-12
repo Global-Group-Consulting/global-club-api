@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\ClubPackType;
 use App\Enums\UserRole;
+use App\Enums\WPMovementType;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Collection;
 use Jenssegers\Mongodb\Auth\User as Authenticatable;
@@ -36,9 +38,11 @@ class User extends Authenticatable {
    * @var array<int, string>
    */
   protected $fillable = [
-    'name',
+    'firstName',
+    'lastName',
     'email',
-    'password',
+    'roles',
+    'apps',
   ];
   
   /**
@@ -80,6 +84,18 @@ class User extends Authenticatable {
    */
   public function walletPremiumMovements(): HasMany {
     return $this->hasMany(WPMovement::class, 'userId', '_id');
+  }
+  
+  
+  /**
+   * @return HasMany
+   */
+  public function walletPremiumMustWithdrawCurrMonth(): HasMany {
+    return $this->hasMany(WPMovement::class, 'userId', '_id')
+      ->where('movementType', WPMovementType::MONTHLY_INCOME)
+      ->where('withdrawableFrom', '<=', Carbon::now())
+      ->where('withdrawableUntil', '>=', Carbon::now())
+      ->where('withdrawalRemaining', '>', 0);
   }
   
   public function getFullName(): string {
