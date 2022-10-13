@@ -27,9 +27,11 @@ Route::get('/hello', [\App\Http\Controllers\Api\HomeController::class, "hello"])
 Route::middleware('auth.cronUser')
   ->prefix("wp")
   ->group(function () {
-    Route::post('/trigger-end-semester-switch', [\App\Http\Controllers\Api\Crons\WalletPremium::class, "triggerEndSemesterSwitch"]);
-    Route::post('/notify-wp-before-recapitalization', [\App\Http\Controllers\Api\Crons\WalletPremium::class, "notifyWPBeforeRecapitalization"]);
-    Route::post("/add-brites-to-premium-wallet", [\App\Http\Controllers\Api\Crons\WalletPremium::class, "addBritesToPremiumWallet"]);
+    Route::post('/trigger-end-semester-switch', [\App\Http\Controllers\Api\Crons\WalletPremiumController::class, "triggerEndSemesterSwitch"]);
+    Route::post('/trigger-check-pack-expiration', [\App\Http\Controllers\Api\Crons\WalletPremiumController::class, "triggerCheckPackExpiration"]);
+    Route::post('/notify-wp-before-recapitalization', [\App\Http\Controllers\Api\Crons\WalletPremiumController::class, "notifyWPBeforeRecapitalization"]);
+    Route::post("/add-brites-to-premium-wallet", [\App\Http\Controllers\Api\Crons\WalletPremiumController::class, "addBritesToPremiumWallet"]);
+    Route::post('/downgrade-user-pack', [\App\Http\Controllers\Api\Crons\UserController::class, "downgradePack"]);
   });
 
 // ****************************************************************************************************************

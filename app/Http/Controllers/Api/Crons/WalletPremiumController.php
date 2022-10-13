@@ -12,6 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\AddBritesToPremiumWallet;
 use App\Jobs\CreateNotification;
 use App\Jobs\Syncronous\NotifyWPNewSemester;
+use App\Jobs\TriggerCheckPackExpiration;
 use App\Models\JobList;
 use App\Models\Movement;
 use App\Models\SubModels\PremiumBySemesterEntry;
@@ -23,7 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Log;
 
-class WalletPremium extends Controller {
+class WalletPremiumController extends Controller {
   
   /**
    * @param  Request  $request
@@ -210,7 +211,19 @@ class WalletPremium extends Controller {
   }
   
   /**
-   * @param  User                                               $user
+   * Called by the Queue app when job is dispatched. Internally call the handle method of the job
+   *
+   * @param  Request  $request
+   *
+   * @return array
+   */
+  public function triggerCheckPackExpiration(): array {
+    // Create a new instance of the job and call the handle method. This to be able to store in the DB the result of the job
+    return (new TriggerCheckPackExpiration())->handle();
+  }
+  
+  /**
+   * @param  UserController                                     $user
    * @param  array{remaining:float, withdrawableUntil: Carbon}  $data
    * @param  JobList                                            $jobConfig
    *

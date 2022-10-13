@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 class CreateNotification implements ShouldQueue {
   use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
   
-  protected function constrRules() {
+  protected function constrRules(): array {
     return [
       "title"                 => "required|string",
       "content"               => "required|string",
@@ -39,7 +39,7 @@ class CreateNotification implements ShouldQueue {
     ];
   }
   
-  protected $data;
+  protected array $data;
   
   /**
    * Create a new job instance.
@@ -61,7 +61,7 @@ class CreateNotification implements ShouldQueue {
    *
    * @return void
    */
-  public function handle() {
-    //
+  public function handle(): void {
+    // Job handled by news app
   }
 }
