@@ -57,8 +57,8 @@ class TriggerCheckPackExpiration implements ShouldQueue {
     
     foreach ($this->data["expiring"] as $key => $users) {
       foreach ($users as $user) {
-        // dispatch synchronously the job that will send the notification to the user
-        SendPackExpirationNotification::dispatchSync($user);
+        // dispatch synchronously the job that will se  nd the notification to the user
+        SendPackExpirationNotification::dispatchSync($user, $key);
       }
     }
     
