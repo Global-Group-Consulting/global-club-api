@@ -64,6 +64,7 @@ class Kernel extends ConsoleKernel {
     
     try {
       // A gennaio e a luglio controlla i brite scaduti e li sposta eventualmente sul wallet premium
+      // andrebbe cambiato il cron ogni giorno perchè i pack scadono in base a quando sono stati attivati.
       $schedule->job(new TriggerEndSemesterSwitch(), $triggerEndSemesterSwitch->queueName)->cron('0 0 1 1,7 *');
     } catch (\Exception $e) {
       $message = "Missing configuration for TriggerEndSemesterSwitch";

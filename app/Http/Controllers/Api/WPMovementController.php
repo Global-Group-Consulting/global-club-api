@@ -61,14 +61,14 @@ class WPMovementController extends Controller {
   }
   
   /**
-   * Return the summary of all semesters for the given user.
+   * Return statistics of all semesters for the given user.
    *
    * @param  string  $userId
    *
    * @return array
    * @throws ValidationException
    */
-  public function userSummary(string $userId): array {
+  public function userStatistics(string $userId): array {
     $validatedData = validator([
       'userId' => $userId,
     ], [
@@ -91,6 +91,26 @@ class WPMovementController extends Controller {
     }
     
     return $data;
+  }
+  
+  /**
+   * Return the summary of all semesters for the given user.
+   *
+   * @param  string  $userId
+   *
+   * @return Collection
+   * @throws ValidationException
+   */
+  public function userSummary(string $userId): Collection {
+    $validatedData = validator([
+      'userId' => $userId,
+    ], [
+      'userId' => ['required', new ObjectId()]
+    ])->validate();
+    
+    $user = User::findOrFail($validatedData['userId']);
+    
+    return WPMovement::getUserSummary($user);
   }
   
   /**
@@ -181,10 +201,13 @@ class WPMovementController extends Controller {
       throw new WpMovementHttpException(HttpStatusCodes::HTTP_BAD_REQUEST, "You must specify a different club card number that your own.");
     }
     
+    if ($amount < 1) {
+      throw new WpMovementHttpException(HttpStatusCodes::HTTP_BAD_REQUEST, "You must request an amount greater than 1.");
+    }
+    
     // by default, the user is withdrawing from his own wallet
-    $destinationUser = $user;
-    
-    
+    $destinationUser = $wpMovement->user;
+  
     // If there is a userCardNum I must transfer the money to that user's account
     if (isset($userCardNum)) {
       // fetch the user with that card number
@@ -197,7 +220,7 @@ class WPMovementController extends Controller {
       
       $isTransfer = true;
     }
-    
+  
     // check if the user has enough money to withdraw and the movement is still withdrawable
     $wpMovement->checkIsWithdrawable($amount);
     
