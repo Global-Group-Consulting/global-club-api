@@ -9,19 +9,11 @@ use App\Enums\MovementType;
 use App\Enums\WPMovementType;
 use App\Exceptions\WpMovementHttpException;
 use App\Models\SubModels\Semester;
-use App\Traits\Models\CamelCasing;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Jenssegers\Mongodb\Eloquent\Builder;
-use Jenssegers\Mongodb\Eloquent\Model;
 use Jenssegers\Mongodb\Relations\BelongsTo;
-use phpDocumentor\Reflection\Types\Integer;
-use Symfony\Component\HttpFoundation\Response as ResponseAlias;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * @mixin Builder
@@ -128,7 +120,7 @@ class WPMovement extends CustomModel {
     
     if ($movement->movementType === MovementType::DEPOSIT_RECEIVED_WP) {
       $user = $movement->user;
-  
+      
       $movementData["notes"] = "Wallet Premium - Trasferimento a favore di {$user->getFullName()}" . ($user->clubCardNumber ? " ($user->clubCardNumber)" : '');
     }
     
@@ -284,6 +276,16 @@ class WPMovement extends CustomModel {
       "semesterDetails"     => Semester::parse($semester),
       "movements"           => $includeMovements ? $wpMovements : null,
     ];
+  }
+  
+  public static function getUserSummary(User $user, bool $includeMovements = true) {
+    /**
+     * @var Collection<WPMovement> $wpMovements
+     */
+    $wpMovements = $user->walletPremiumMovements()
+      ->get();
+    
+    return $wpMovements->groupBy("semester");
   }
   
 }

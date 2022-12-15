@@ -43,6 +43,7 @@ Route::middleware('auth.customToken')
   ->group(function () {
     Route::get('/{wpMovementId}', [\App\Http\Controllers\Api\WPMovementController::class, "show"]);
     
+    Route::get('/user-statistics/{userId}', [\App\Http\Controllers\Api\WPMovementController::class, "userStatistics"]);
     Route::get('/user-summary/{userId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummary"]);
     Route::get('/user-summary-by-semester/{userId}/{semesterId}', [\App\Http\Controllers\Api\WPMovementController::class, "userSummaryBySemester"]);
     
