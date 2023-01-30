@@ -49,13 +49,13 @@ class DowngradeUserPack implements ShouldQueue {
     
     // if pack has changed or no lastChangedHistory exist, create a new UserClubPackEntity
     $lastChangeHistory = new UserClubPackEntity([
-      "pack"     => ClubPackType::BASIC,
+      "pack"     => ClubPackType::UNSUBSCRIBED,
       "startsAt" => Carbon::now(),
       "endsAt"   => null
     ]);
     
     // update the user pack
-    $user->clubPack        = ClubPackType::BASIC;
+    $user->clubPack        = ClubPackType::UNSUBSCRIBED;
     $user->clubPackHistory = array_merge([$lastChangeHistory->getAttributes()], $user->clubPackHistory);
     $user->save();
     
